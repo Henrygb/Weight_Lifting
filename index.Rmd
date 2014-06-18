@@ -1,0 +1,93 @@
+Reproducing Activity Recognition of Weight Lifting Exercises
+============================================================
+
+This exercise for the Coursera [Practical Machine Learning](https://www.coursera.org/course/predmachlearn) course aims to predict types of weight lifting exercises from measurements of sensors.
+
+The original data comes from:
+
+*[Qualitative Activity Recognition of Weight Lifting Exercises](http://groupware.les.inf.puc-rio.br/public/papers/2013.Velloso.QAR-WLE.pdf)* 
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th Augmented Human (AH) International Conference in cooperation with ACM SIGCHI (Augmented Human'13) . Stuttgart, Germany: ACM SIGCHI, 2013.
+
+Data preparation
+----------------
+
+First R needs to read the training and test data provided in the correct location.
+
+```{r}
+setwd("C:/Users/HB/Weight_Lifting/")
+datalocation <- "F:/Documents/Coursera/Practical Machine Learning/"
+training <- read.csv(paste0(datalocation, "pml-training.csv"))
+testing  <- read.csv(paste0(datalocation, "pml-testing.csv"))
+```
+
+Cleaning the training data involves removing any variables which have missing values, any variables which are not-numeric (except for the `classe` variable, which is what is being predicted) and the initial four variables `X`, `raw_timestamp_part_1`, `raw_timestamp_part_2`, and `num_window` which just give an order to the observations and may cause leakage if retained.  See how the dimension of the training dataframe reduces at each step:
+
+```{r}
+dim(training) 
+trainingnotNA <- training[,colSums(is.na(training))==0]
+dim(trainingnotNA) 
+trainingnumeric <- trainingnotNA[, sapply(trainingnotNA, is.numeric)]
+dim(trainingnumeric) 
+trainingtouse <- cbind(trainingnumeric[,-(1:4)], classe=training$classe)
+dim(trainingtouse)
+```
+
+The following variables have been retained to training and predict `classe`:
+
+```{r}
+variablestouse <- names(trainingtouse)[names(trainingtouse) != "classe"]
+variablestouse
+```
+
+Some R libraries are needed to perform Random Forest machine learning.
+
+```{r}
+library(caret)
+library(randomForest)
+library(e1071)
+```
+
+Model fitting 
+-------------
+
+The original analysis by Velloso *et al* states it used a Random Forest approach, so this does too. The model fitting uses the `caret` package to apply the Random Forest method to train the machine learning model using what remains of the training data after cleaning. This takes some time and uses a large amount of memory, at least on this machine.      
+
+It also uses 3-fold cross validation to give an estimate of out-of-sample error. 
+
+```{r}
+fitControl <- trainControl(method="cv", number=3)
+modelFit   <- train(classe ~ ., data=trainingtouse, method="rf", 
+                    trControl=fitControl)
+```
+
+Results
+-------
+
+The results of the model fit suggests that it has a perfect in-model fit on all 19622 observations, producing a confusion matrix where all values are on the diagonal.
+
+The 3-fold cross-validation suggests that out-of-model predictions may not be quite so exact, but should still be about 99% accurate.  
+
+```{r}
+print(modelFit)
+sum(predict(modelFit, training) == training$classe)  # in-model correct
+sum(predict(modelFit, training) != training$classe)  # in model failures
+confusionMatrix(predict(modelFit, training), training$classe)
+```
+
+There is also information about the importance of the different variables used for prediction, which can be seen on this plot. 
+```{r fig.width=7, fig.height=9}
+plot(varImp(modelFit, scale=FALSE), xlim=c(0, 800),
+     main="Variable importance of 52 used in fitted model")
+```
+
+Prediction of test set
+----------------------
+
+A fitted model allows prediction from the test set. The values need to be converted from a factor varibale to characters.
+
+```{r}
+answers <- as.character(predict(modelFit, testing))
+answers
+```
+
+20 observations are not sufficient to see whether the out-of-model accuracy is in fact about 99%.  As an indication of accuracy, all 20 predictions were subsequently validated as correct. 
