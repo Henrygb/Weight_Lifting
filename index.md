@@ -61,7 +61,7 @@ dim(trainingtouse)
 ```
 
 
-The following variables have been retained to training and predict `classe`:
+The following numeric variables have been retained to training and predict `classe`:
 
 
 ```r
@@ -120,12 +120,13 @@ library(e1071)
 Model fitting 
 -------------
 
-The original analysis by Velloso *et al* states it used a Random Forest approach, so this does too. The model fitting uses the `caret` package to apply the Random Forest method to train the machine learning model using what remains of the training data after cleaning. This takes some time and uses a large amount of memory, at least on this machine.      
+The original analysis by Velloso *et al* states it used a Random Forest approach, so this analysis does too. The model fitting uses the `caret` package to apply the Random Forest method to train the machine learning model using what remains of the training data after cleaning. This takes some time and uses a large amount of memory, at least on this machine.      
 
-It also uses 3-fold cross validation to give an estimate of out-of-sample error. 
+It also uses 3-fold cross validation to give an estimate of out-of-sample error. Setting the seed allows reproducability.
 
 
 ```r
+set.seed(2014)
 fitControl <- trainControl(method = "cv", number = 3)
 modelFit <- train(classe ~ ., data = trainingtouse, method = "rf", trControl = fitControl)
 ```
@@ -136,7 +137,7 @@ Results
 
 The results of the model fit suggests that it has a perfect in-model fit on all 19622 observations, producing a confusion matrix where all values are on the diagonal.
 
-The 3-fold cross-validation suggests that out-of-model predictions may not be quite so exact, but should still be about 99% accurate.  
+The 3-fold cross-validation suggests that out-of-model predictions should be almost perfect too: the only clues that it might not be completely perfect are the small but poositive standard deviations for accuracy and Kappa. Even so, the cross-validation statistics suggest that the should still be more than 99% accurate.  
 
 
 ```r
@@ -159,11 +160,11 @@ print(modelFit)
 ## 
 ##   mtry  Accuracy  Kappa  Accuracy SD  Kappa SD
 ##   2     1         1      0.002        0.002   
-##   30    1         1      8e-04        0.001   
-##   50    1         1      0.001        0.002   
+##   30    1         1      0.002        0.002   
+##   50    1         1      0.003        0.004   
 ## 
 ## Accuracy was used to select the optimal model using  the largest value.
-## The final value used for the model was mtry = 27.
+## The final value used for the model was mtry = 2.
 ```
 
 ```r
@@ -221,10 +222,11 @@ confusionMatrix(predict(modelFit, training), training$classe)
 ```
 
 
-There is also information about the importance of the different variables used for prediction, which can be seen on this plot. 
+There is also information about the importance of the different variables used for prediction, which can be seen on this plot. Belt measurements tend to be more important and gyro measurements tend to be relatively less important. 
+
 
 ```r
-plot(varImp(modelFit, scale = FALSE), xlim = c(0, 800), main = "Variable importance of 52 used in fitted model")
+plot(varImp(modelFit, scale = FALSE), xlim = c(0, 1000), main = "Variable importance of 52 used in fitted model")
 ```
 
 ![plot of chunk unnamed-chunk-7](figure/unnamed-chunk-7.png) 
@@ -233,7 +235,7 @@ plot(varImp(modelFit, scale = FALSE), xlim = c(0, 800), main = "Variable importa
 Prediction of test set
 ----------------------
 
-A fitted model allows prediction from the test set. The values need to be converted from a factor varibale to characters.
+A fitted model allows prediction from the test set. The values need to be converted from a factor variable vector to characters before submission.
 
 
 ```r
@@ -247,4 +249,4 @@ answers
 ```
 
 
-20 observations are not sufficient to see whether the out-of-model accuracy is in fact about 99%.  As an indication of accuracy, all 20 predictions were subsequently validated as correct. 
+20 observations are not sufficient to see precisely how close the out-of-model accuracy is in fact to 100% as one error would drop the result to 95%.  In fact, all 20 predictions were subsequently validated as correct. 
