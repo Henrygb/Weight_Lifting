@@ -1,4 +1,8 @@
-Weight_Lifting
-==============
+Weight Lifting machine learning
+===============================
 
-Weight Lifting exercise in Coursera Practical Machine Learning
+This is my work on the Weight Lifting exercise in the Coursera course on Practical Machine Learning.
+
+You can see the analysis and results as a readable markdown file at [https://github.com/Henrygb/Weight_Lifting/blob/master/index.md](https://github.com/Henrygb/Weight_Lifting/blob/master/index.md)
+
+or, during June 2014, as a html page at [https://henrygb.github.io/index.html](https://henrygb.github.io/index.html)
