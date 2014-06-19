@@ -52,20 +52,20 @@ dim(trainingnumeric)
 ```
 
 ```r
-trainingtouse <- cbind(trainingnumeric[, -(1:4)], classe = training$classe)
+trainingtouse <- cbind(trainingnumeric[, -(1:4)])
 dim(trainingtouse)
 ```
 
 ```
-## [1] 19622    53
+## [1] 19622    52
 ```
 
 
-The following numeric variables have been retained to training and predict `classe`:
+The following numeric variables will be used retained to training and predict `classe`:
 
 
 ```r
-variablestouse <- names(trainingtouse)[names(trainingtouse) != "classe"]
+variablestouse <- names(trainingtouse)
 variablestouse
 ```
 
@@ -122,22 +122,24 @@ Model fitting
 
 The original analysis by Velloso *et al* states it used a Random Forest approach, so this analysis does too. The model fitting uses the `caret` package to apply the Random Forest method to train the machine learning model using what remains of the training data after cleaning. This takes some time and uses a large amount of memory, at least on this machine.      
 
-It also uses 3-fold cross validation to give an estimate of out-of-sample error. Setting the seed allows reproducability.
+It both uses 3-fold cross validation and witholds about a fifth of the training data for further validation, to give an estimate of out-of-sample error. Setting the seed allows reproducability.
 
 
 ```r
 set.seed(2014)
+intrain <- createDataPartition(y = training$classe, p = 0.8, list = FALSE)
 fitControl <- trainControl(method = "cv", number = 3)
-modelFit <- train(classe ~ ., data = trainingtouse, method = "rf", trControl = fitControl)
+modelFit <- train(classe ~ ., method = "rf", trControl = fitControl, data = training[intrain, 
+    c(variablestouse, "classe")])
 ```
 
 
 Results
 -------
 
-The results of the model fit suggests that it has a perfect in-model fit on all 19622 observations, producing a confusion matrix where all values are on the diagonal.
+The results of the model fit suggests that it has a perfect in-model fit, producing a confusion matrix where all values are on the diagonal.
 
-The 3-fold cross-validation suggests that out-of-model predictions should be almost perfect too: the only clues that it might not be completely perfect are the small but poositive standard deviations for accuracy and Kappa. Even so, the cross-validation statistics suggest that the should still be more than 99% accurate.  
+The 3-fold cross-validation suggests that out-of-model predictions should be almost perfect too.  
 
 
 ```r
@@ -147,36 +149,44 @@ print(modelFit)
 ```
 ## Random Forest 
 ## 
-## 19622 samples
+## 15699 samples
 ##    52 predictors
 ##     5 classes: 'A', 'B', 'C', 'D', 'E' 
 ## 
 ## No pre-processing
 ## Resampling: Cross-Validated (3 fold) 
 ## 
-## Summary of sample sizes: 13083, 13080, 13081 
+## Summary of sample sizes: 10465, 10467, 10466 
 ## 
 ## Resampling results across tuning parameters:
 ## 
 ##   mtry  Accuracy  Kappa  Accuracy SD  Kappa SD
-##   2     1         1      0.002        0.002   
-##   30    1         1      0.002        0.002   
-##   50    1         1      0.003        0.004   
+##   2     1         1      2e-04        3e-04   
+##   30    1         1      7e-04        8e-04   
+##   50    1         1      0.004        0.005   
 ## 
 ## Accuracy was used to select the optimal model using  the largest value.
-## The final value used for the model was mtry = 2.
+## The final value used for the model was mtry = 27.
 ```
 
 ```r
-sum(predict(modelFit, training) == training$classe)  # in-model correct
+mean(predict(modelFit, training[intrain, ]) == training[intrain, ]$classe)
 ```
 
 ```
-## [1] 19622
+## [1] 1
 ```
 
 ```r
-sum(predict(modelFit, training) != training$classe)  # in model failures
+sum(predict(modelFit, training[intrain, ]) == training[intrain, ]$classe)
+```
+
+```
+## [1] 15699
+```
+
+```r
+sum(predict(modelFit, training[intrain, ]) != training[intrain, ]$classe)
 ```
 
 ```
@@ -184,7 +194,7 @@ sum(predict(modelFit, training) != training$classe)  # in model failures
 ```
 
 ```r
-confusionMatrix(predict(modelFit, training), training$classe)
+confusionMatrix(predict(modelFit, training[intrain, ]), training[intrain, ]$classe)
 ```
 
 ```
@@ -192,11 +202,11 @@ confusionMatrix(predict(modelFit, training), training$classe)
 ## 
 ##           Reference
 ## Prediction    A    B    C    D    E
-##          A 5580    0    0    0    0
-##          B    0 3797    0    0    0
-##          C    0    0 3422    0    0
-##          D    0    0    0 3216    0
-##          E    0    0    0    0 3607
+##          A 4464    0    0    0    0
+##          B    0 3038    0    0    0
+##          C    0    0 2738    0    0
+##          D    0    0    0 2573    0
+##          E    0    0    0    0 2886
 ## 
 ## Overall Statistics
 ##                                 
@@ -222,14 +232,81 @@ confusionMatrix(predict(modelFit, training), training$classe)
 ```
 
 
-There is also information about the importance of the different variables used for prediction, which can be seen on this plot. Belt measurements tend to be more important and gyro measurements tend to be relatively less important. 
+Considering the fifth of training data observations withheld for validation, the suggested out-of model error is still small, but not quite so perfect. with an accuracy of over 99.5%.
 
 
 ```r
-plot(varImp(modelFit, scale = FALSE), xlim = c(0, 1000), main = "Variable importance of 52 used in fitted model")
+mean(predict(modelFit, training[-intrain, ]) == training[-intrain, ]$classe)
 ```
 
-![plot of chunk unnamed-chunk-7](figure/unnamed-chunk-7.png) 
+```
+## [1] 0.9957
+```
+
+```r
+sum(predict(modelFit, training[-intrain, ]) == training[-intrain, ]$classe)
+```
+
+```
+## [1] 3906
+```
+
+```r
+sum(predict(modelFit, training[-intrain, ]) != training[-intrain, ]$classe)
+```
+
+```
+## [1] 17
+```
+
+```r
+confusionMatrix(predict(modelFit, training[-intrain, ]), training[-intrain, 
+    ]$classe)
+```
+
+```
+## Confusion Matrix and Statistics
+## 
+##           Reference
+## Prediction    A    B    C    D    E
+##          A 1115    3    0    0    0
+##          B    0  753    1    0    0
+##          C    0    3  681    6    0
+##          D    0    0    2  637    1
+##          E    1    0    0    0  720
+## 
+## Overall Statistics
+##                                         
+##                Accuracy : 0.996         
+##                  95% CI : (0.993, 0.997)
+##     No Information Rate : 0.284         
+##     P-Value [Acc > NIR] : <2e-16        
+##                                         
+##                   Kappa : 0.995         
+##  Mcnemar's Test P-Value : NA            
+## 
+## Statistics by Class:
+## 
+##                      Class: A Class: B Class: C Class: D Class: E
+## Sensitivity             0.999    0.992    0.996    0.991    0.999
+## Specificity             0.999    1.000    0.997    0.999    1.000
+## Pos Pred Value          0.997    0.999    0.987    0.995    0.999
+## Neg Pred Value          1.000    0.998    0.999    0.998    1.000
+## Prevalence              0.284    0.193    0.174    0.164    0.184
+## Detection Rate          0.284    0.192    0.174    0.162    0.184
+## Detection Prevalence    0.285    0.192    0.176    0.163    0.184
+## Balanced Accuracy       0.999    0.996    0.996    0.995    0.999
+```
+
+
+There is also information about the importance of the different variables used for prediction, which can be seen on this plot. Belt measurements seem to tend to be more important while gyro measurements are often relatively less important. 
+
+
+```r
+plot(varImp(modelFit, scale = FALSE), xlim = c(0, 1500), main = "Variable importance of 52 used in fitted model")
+```
+
+![plot of chunk unnamed-chunk-8](figure/unnamed-chunk-8.png) 
 
 
 Prediction of test set
@@ -249,4 +326,4 @@ answers
 ```
 
 
-20 observations are not sufficient to see precisely how close the out-of-model accuracy is in fact to 100% as one error would drop the result to 95%.  In fact, all 20 predictions were subsequently validated as correct. 
+Unlike the validation set with over 3900 observations, the 20 observations in the provided test set are not sufficient to see precisely how close the out-of-model accuracy is in fact to 100% as one error would drop the result to 95%.  In fact, all 20 predictions were subsequently validated as correct. 
